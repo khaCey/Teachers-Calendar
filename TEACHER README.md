@@ -162,19 +162,36 @@ This application provides a comprehensive dashboard for teachers to:
 ### Core Functions (`Code.js`)
 - `doGet()`: Web app entry point
 - `getEventsJson()`: Returns lesson data for the dashboard
-- `fetchAndCacheTodayLessons()`: Fetches and processes today's lessons
-- `markPdfUploaded()`: Updates PDF upload status
-- `createFoldersForStudents()`: Creates student folder structure
-- `changeEventColor()`: Updates calendar event colors based on evaluation tags
+- `getLessonsTodayStatuses()`: Reads PDF and history status flags
+- `markPdfUploaded(eventID, flag)`: Updates PDF upload status
+- `isValidLessonEvent_(event)`: Filters out cancelled lessons by color
+- `fetchAndCacheTodayLessons([date])`: Fetches events and updates the sheet
+- `determineLessonTypeAndPrefix(eventName)`: Detects lesson type
+- `incrementLessonTypeID(type)`: Increments ID counters
+- `createFoldersForStudents()`: Placeholder for folder creation (currently commented out)
+- `manual()`: Debug helper to refresh a specific date
+- `createDemoLessonFolder(eventID, eventName)`: Creates demo lesson folders
+- `getStudentLinks(studentName)`: Returns note/history URLs
+- `extractStudentNameFromDemo(eventName)`: Parses names from demo titles
+- `changeEventColor(eventID, color)`: Updates calendar event colors
+- `getStudentNamesByFolder(folderName)`: Lists students by folder
+- `getStudentEvaluations(studentName)`: Retrieves evaluation history
 
 ### Helper Functions (`Helper.js`)
-- `uploadStudentPDF()`: Converts and uploads lesson notes
-- `addLessonHistoryEntry()`: Records lesson progress
+- `uploadStudentPDF(data)`: Converts and uploads lesson notes
+- `addLessonHistoryEntry(data)`: Records lesson progress
+- `_updateStatusInTodaySheet(folderName, date, columnName)`: Flags status in sheet
+- `findStudentFolder(name)`: Finds a student folder
+- `findFolderInFolder(parent, name)`: Finds a subfolder
+- `findFileInFolder(parent, name)`: Finds a file
+- `_appendLessonHistoryRow(...)`: Writes a row to the history sheet
 - `getStudentFolders()`: Retrieves student folder list
 - `getTeacherList()`: Gets available teachers
-- `getStudentLinks()`: Returns direct URLs to student files
-- `generateEvaluationPDF()`: Creates evaluation PDF documents
-- `createEvaluationContent()`: Formats evaluation data for PDF generation
+- `getFoldersAndTeachers()`: Bundles folder and teacher data
+- `formatStudentNames(students)`: Formats names for folder creation
+- `generateEvaluationPDF(data)`: Creates evaluation PDF documents
+- `createEvaluationContent(data)`: Formats evaluation data for PDF generation
+- `getStudentNamesByFolder(folderName)`: Finds student names by folder
 
 ## Calendar Event Format
 
@@ -193,6 +210,11 @@ This application provides a comprehensive dashboard for teachers to:
 - **Evaluation Due**: Add `#evaluationDue` to event description
 - **Automatic Color Coding**: Green for ready, red for due
 - **Evaluation Button**: Orange button appears on events with `#evaluationDue` tag
+
+### Teacher Tags
+- **Assign Teacher**: Add `#teacherName` to event description
+- **Example**: `#teacherKhacey`, `#teacherAna`, `#teacherSham`
+- **Dashboard Display**: Teacher name appears as a purple marker on the lesson card
 
 ## Folder Structure
 
@@ -267,8 +289,8 @@ Google Drive/
 
 ---
 
-**Version**: 1.2  
-**Last Updated**: 2024  
-**Timezone**: Asia/Tokyo  
-**Language**: English/Japanese (mixed content)  
+**Version**: 1.3
+**Last Updated**: 2025
+**Timezone**: Asia/Tokyo
+**Language**: English/Japanese (mixed content)
 **Clasp Project ID**: 1GgbhvcVRx27p3fCbah5wduyzczrzbzaurgK15oeYdn5bjh8XxOpDCRSm 

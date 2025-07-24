@@ -213,6 +213,8 @@ function fetchAndCacheTodayLessons(dateOverride) {
     const description = event.getDescription() || '';
     const hasEvaluationReady = description.includes('#evaluationReady');
     const hasEvaluationDue = description.includes('#evaluationDue');
+    const teacherMatch = description.match(/#teacher(\w+)/i);
+    const teacher = teacherMatch ? teacherMatch[1] : '';
     
     // Change event color based on evaluation tags
     if (hasEvaluationReady) {
@@ -249,7 +251,8 @@ function fetchAndCacheTodayLessons(dateOverride) {
         lessonHistory: false,
         evaluationReady: hasEvaluationReady,
         evaluationDue: hasEvaluationDue,
-        isOnline:      isOnline
+        isOnline:      isOnline,
+        teacher:       teacher
       });
     });
   });
@@ -269,13 +272,17 @@ function fetchAndCacheTodayLessons(dateOverride) {
         pdfUpload:     item.pdfUpload,
         lessonHistory: item.lessonHistory,
         evaluationReady: item.evaluationReady,
-        evaluationDue: item.evaluationDue
+        evaluationDue: item.evaluationDue,
+        teacher:       item.teacher
       };
     } else {
       grouped[item.eventID].studentNames.push(item.studentName);
       // If any student has evaluation tags, mark the event accordingly
       if (item.evaluationReady) grouped[item.eventID].evaluationReady = true;
       if (item.evaluationDue) grouped[item.eventID].evaluationDue = true;
+      if (!grouped[item.eventID].teacher && item.teacher) {
+        grouped[item.eventID].teacher = item.teacher;
+      }
     }
   });
   const lessons = Object.values(grouped);
@@ -302,7 +309,8 @@ function fetchAndCacheTodayLessons(dateOverride) {
 
   const headers = [
     'eventID', 'eventName', 'Start', 'End',
-    'folderName', 'studentNames', 'pdfUpload', 'lessonHistory', 'evaluationReady', 'evaluationDue', 'isOnline'
+    'folderName', 'studentNames', 'pdfUpload', 'lessonHistory',
+    'evaluationReady', 'evaluationDue', 'isOnline', 'teacher'
   ];
   tgt.getRange(1, 1, 1, headers.length).setValues([headers]);
 
@@ -318,7 +326,8 @@ function fetchAndCacheTodayLessons(dateOverride) {
       l.lessonHistory,
       l.evaluationReady || false,
       l.evaluationDue || false,
-      l.isOnline || false
+      l.isOnline || false,
+      l.teacher || ''
     ]);
     tgt.getRange(2, 1, out.length, headers.length).setValues(out);
     Logger.log('Wrote %s lessons to sheet', out.length);

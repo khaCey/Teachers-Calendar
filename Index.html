@@ -496,9 +496,22 @@
       cursor: pointer;
       z-index: 10;
     }
-    
+
     .evaluation-btn:hover {
       background: #e55a2b;
+    }
+
+    /* Teacher Marker */
+    .teacher {
+      position: absolute;
+      top: 4px;
+      right: 120px;
+      background: #673ab7;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      z-index: 10;
     }
 
     /* Online Marker */
@@ -621,7 +634,8 @@
 
     /* 2) Child markers become static (in the flex flow) */
     .marker-container .online-marker,
-    .marker-container .evaluation-btn {
+    .marker-container .evaluation-btn,
+    .marker-container .teacher {
       position: static;   /* <-- remove absolute positioning */
       top: auto;          /* <-- reset any old top/right */
       right: auto;
@@ -991,6 +1005,14 @@
             openEvaluationModal(e);
           };
           markerContainer.appendChild(evalBtn);
+        }
+
+        // Add teacher marker if teacher tag exists
+        if (e.teacher) {
+          const teacherDiv = document.createElement('div');
+          teacherDiv.className = 'teacher';
+          teacherDiv.textContent = e.teacher;
+          markerContainer.appendChild(teacherDiv);
         }
 
         // Only append the container if it has children
