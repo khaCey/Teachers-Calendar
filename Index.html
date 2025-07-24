@@ -1,0 +1,1604 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <base target="__top">
+  <meta charset="utf-8">
+  <title>Today's Students Dashboard</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap"
+    rel="stylesheet">
+  <style>
+    body {
+      font-family: "Roboto", Arial, sans-serif;
+      margin: 0;
+      background-color: #f4f6f8;
+      color: #333;
+      max-height: 100vh;
+    }
+    h3 {
+      color: #219150;
+      text-align: center;
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    .calendar-container {
+      display: flex;
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      padding: 32px;
+      z-index: -1;
+    }
+    .time-column {
+      width: 60px;
+      border-right: 1px solid #eee;
+      font-size: 12px;
+      color: #888;
+      position: relative;
+      z-index: 1;
+    }
+    .time-slot {
+      box-sizing: border-box;
+      height: 60px;
+      border-bottom: 1px solid #f0f0f0;
+      text-align: right;
+      padding-right: 8px;
+      line-height: 60px;
+    }
+    .events-column {
+      padding-left: 10px;
+      flex: 1;
+      position: relative;
+      min-width: 600px;
+      height: 600px;
+      overflow-x: visible;
+      overflow-y: visible;
+      background: transparent;
+      background-image:
+        repeating-linear-gradient(
+          to bottom,
+          transparent 0,
+          transparent calc(60px - 1px),
+          #f0f0f0      calc(60px - 1px),
+          #f0f0f0      60px
+        );
+    }
+    .event-block {
+      position: absolute;
+      border-radius: 8px;
+      background: #e3f2fd;
+      border-left: 5px solid #2196f3;
+      color: #222;
+      padding: 6px 8px;
+      font-size: 13px;
+      box-shadow: 0 2px 8px rgba(33,150,243,0.08);
+      cursor: pointer;
+      transition: box-shadow .2s,border-color .2s,transform .1s;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      box-sizing: border-box;
+      margin-left: 10px;
+    }
+    .event-block:hover { 
+      box-shadow: 0 6px 24px rgba(33,150,243,0.18),
+        0 2px 8px rgba(0,0,0,0.08);
+      border-color: #1565c0;
+      transform: translateY(-2px) scale(1.03);
+      background:   #e1f5fe;
+      z-index: 1000;
+    }
+    .event-block.uploaded { border-left-color: #D32F2F; background: #FFCDD2; }
+    .event-block.uploaded:hover { border-left-color: #B71C1C; background: #FF8A80; }
+    .event-block.history  { border-left-color: #FFA000; background: #FFF8E1; }
+    .event-block.history:hover { border-left-color: #FF6F00; background: #FFE082; }
+    .event-block.complete { border-left-color: #388E3C; background: #C8E6C9	; }
+    .event-block.complete:hover { border-left-color: #2E7D32; background: #A5D6A7; }
+    .lesson-folder { font-weight:700; }
+    .lesson-names  { color:#555; margin-bottom:2px; }
+    .lesson-date   { color:#888; }
+    .current-time-line {
+      position: absolute; left:0; right:0; height:2px; background:#e53935; z-index:3;
+    }
+    .grid-line {
+      pointer-events: none;
+      z-index: 1;
+    }
+    /* loading */
+    #loading {
+      display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+      background:rgba(255,255,255,0.8); justify-content:center; align-items:center; z-index:1000;
+    }
+    #loading.visible { display:flex; }
+    #loading span {
+      border:6px solid #f3f3f3; border-top:6px solid #4caf50;
+      border-radius:50%; width:50px; height:50px;
+      animation:spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    /* MODAL OVERLAY */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    /* when we want to show it */
+    .modal.show {
+      display: flex;
+    }
+
+    /* The white box inside the overlay */
+    .modal-content {
+      background: #fff;
+      padding: 2rem 1.5rem;
+      border-radius: 8px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+      position: relative;
+      font-family: "Roboto", sans-serif;
+    }
+
+    /* Close "×" button */
+    .modal-content .close {
+      position: absolute;
+      top: 8px; right: 12px;
+      font-size: 24px;
+      color: #888;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .modal-content .close:hover {
+      color: #444;
+    }
+    /* Heading */
+    .modal-content h3 {
+      margin: 0 0 1.5rem;
+      font-size: 1.5rem;
+      text-align: center;
+      color: #219150;
+    }
+
+    /* Form labels */
+    .modal-content label {
+      display: block;
+      margin: 0.75rem 0 0.25rem;
+      font-weight: 500;
+      color: #333;
+    }
+
+    /* Text & date inputs */
+    .modal-content input[type="text"],
+    .modal-content input[type="date"] {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .modal-content input:focus {
+      outline: none;
+      border-color: #219150;
+      box-shadow: 0 0 0 2px rgba(33, 145, 80, 0.2);
+    }
+
+    /* Primary button */
+    .modal-content button {
+      margin-top: 1.5rem;
+      width: 100%;
+      padding: 0.65rem;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      background-color: #219150;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.2s, box-shadow 0.2s;
+    }
+    .modal-content button:hover {
+      background-color: #197a40;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    /* If you have secondary buttons (e.g. "Back") */
+    .modal-content button.secondary {
+      background-color: #ccc;
+      color: #333;
+      margin-top: 0.75rem;
+    }
+    .modal-content button.secondary:hover {
+      background-color: #bbb;
+    }
+
+    /* Optional: slightly lighten your overlay */
+    .modal {
+      background: rgba(0, 0, 0, 0.4);
+    }
+    /* add to your <style> */
+    button.uploading {
+      position: relative;
+      color: transparent;  /* hide the label text */
+    }
+    button.uploading::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 1em; height: 1em;
+      margin: -0.5em 0 0 -0.5em;
+      border: 2px solid #fff;
+      border-top-color: rgba(255,255,255,0.5);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    /* ---------- Lesson History Modal Enhancements ---------- */
+
+      /* Modal content overrides */
+      #historyModal .modal-content {
+        max-width: 750px;
+        padding: 2rem;                /* a little more breathing room */
+      }
+
+      /* Heading */
+      #historyModal .modal-content h3 {
+        font-size: 1.75rem;
+        margin-bottom: 1.5rem;
+        color: #219150;               /* match your theme green */
+        text-align: center;
+      }
+
+      /* Labels */
+      #historyModal .modal-content label {
+        display: block;
+        margin-top: 1rem;
+        font-weight: 600;
+        color: #333;
+      }
+
+      /* Inputs & textareas */
+      #historyModal .modal-content input[type="text"],
+      #historyModal .modal-content select,
+      #historyModal .modal-content textarea {
+        width: 100%;
+        padding: 0.6rem 0.8rem;
+        margin-top: 0.3rem;
+        font-size: 1rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+
+      /* Uniform height for inputs */
+      #historyModal .modal-content input[type="text"],
+      #historyModal .modal-content select {
+        height: 2.5rem;
+        line-height: 1.2;
+      }
+
+      /* Textarea min-height */
+      #historyModal .modal-content textarea {
+        min-height: 3.5rem;
+        resize: vertical;
+      }
+
+      /* Focus state */
+      #historyModal .modal-content input:focus,
+      #historyModal .modal-content textarea:focus,
+      #historyModal .modal-content select:focus {
+        outline: none;
+        border-color: #219150;
+        box-shadow: 0 0 0 3px rgba(33, 145, 80, 0.2);
+      }
+
+      /* Submit button */
+      #historyModal .modal-content button {
+        margin-top: 1.75rem;
+        width: 100%;
+        padding: 0.75rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #fff;
+        background-color: #219150;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.2s, box-shadow 0.2s;
+      }
+
+      /* Hover state */
+      #historyModal .modal-content button:hover {
+        background-color: #197a40;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      }
+
+      /* Close "×" styling tweak */
+      #historyModal .modal-content .close {
+        top: 12px;
+        right: 12px;
+        font-size: 1.5rem;
+        color: #666;
+      }
+
+      /* Ensure labels stay above fields on narrow screens */
+      @media (max-width: 400px) {
+        #historyModal .modal-content {
+          padding: 1.5rem;
+        }
+        #historyModal .modal-content h3 {
+          font-size: 1.5rem;
+        }
+      }
+      #dashboardTitle {
+        font-size: 3rem;   /* or whatever size feels right */
+        font-weight: 700;  /* keep it bold if you like */
+        margin: 40px 0;
+      }
+      #historyModal{
+      }
+      .flexBox{
+        display: flex;
+      }
+      .innerBox{
+        max-width: 50%;
+        width: 50%;
+      }
+      .innerBox#leftBox{
+        margin-right: 10px;
+      }
+      innerBox#rightBox{
+        margin-left: 10px;
+      }
+    /* Demo lesson create folder button */
+    .create-folder-btn {
+      background: #2196F3;
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      margin-top: 4px;
+      transition: background-color 0.2s;
+    }
+    .create-folder-btn:hover {
+      background: #1976D2;
+    }
+    .create-folder-btn:disabled {
+      background: #BDBDBD;
+      cursor: not-allowed;
+    }
+    .modal-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    .modal-buttons button, .modal-buttons .a-as-button {
+        flex: 1;
+        margin-top: 0;
+        text-align: center;
+        text-decoration: none;
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        padding: 0.65rem;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #fff;
+        background-color: #555;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.2s, box-shadow 0.2s;
+    }
+    .modal-buttons button.secondary, .modal-buttons .a-as-button.secondary {
+        background-color: #6c757d;
+        color: #fff;
+    }
+    .modal-buttons button:hover, .modal-buttons .a-as-button:hover {
+        opacity: 0.9;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .a-as-button.disabled {
+      background-color: #ccc;
+      color: #666;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    
+    /* Evaluation Modal Styles */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1em;
+    }
+    
+    .eval-row {
+      display: flex;
+      gap: 0.5em;
+      margin-bottom: 0.2em;
+    }
+    
+    .eval-row input {
+      flex: 1;
+    }
+    
+    #evaluationModal .modal-content {
+      max-width: 800px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    
+    #evaluationModal h3 {
+      margin-top: 1.5em;
+      margin-bottom: 0.5em;
+      color: #219150;
+    }
+    
+    #evaluationModal textarea {
+      width: 100%;
+      box-sizing: border-box;
+      font-size: 1em;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 0.5rem;
+      resize: vertical;
+    }
+    
+    #evaluationModal input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+      font-size: 1em;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 0.5rem;
+    }
+    
+    #evaluationModal button {
+      margin-top: 1em;
+      background-color: #219150;
+      color: white;
+      border: none;
+      padding: 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1em;
+    }
+    
+    #evaluationModal button:hover {
+      background-color: #197a40;
+    }
+    
+    /* Evaluation Button */
+    .evaluation-btn {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: #ff6b35;
+      color: white;
+      border: none;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      cursor: pointer;
+      z-index: 10;
+    }
+    
+    .evaluation-btn:hover {
+      background: #e55a2b;
+    }
+
+    /* Online Marker */
+    .online-marker {
+      position: absolute;
+      top: 4px;
+      right: 60px;
+      background: #2196f3;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      pointer-events: none;
+    }
+    .online-marker .icon {
+      font-size: 12px;
+      margin-right: 2px;
+    }
+    
+    /* Evaluation Ready Indicator */
+    .evaluation-ready {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: #4caf50;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    /* Evaluation Table Styling */
+    #evalsTable th,
+    #evalsTable td {
+      text-align: center;
+      padding: 0;
+      width: 50px !important;
+      box-sizing: border-box;
+      outline: 1px solid red;
+    }
+    
+    /* Constrain input widths in evaluation table */
+    #evalsTable input {
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box;
+      font-size: 10px;
+      padding: 2px;
+      border: 1px solid #ccc;
+      border-radius: 2px;
+    }
+    
+    /* Google Docs and Sheets button colors */
+    #lessonNotesBtn {
+      background-color: #4285f4 !important; /* Google Docs blue */
+      color: #fff !important;
+    }
+    #lessonNotesBtn:hover {
+      background-color: #3367d6 !important; /* Darker blue on hover */
+    }
+    
+    #lessonHistoryBtn {
+      background-color: #0f9d58 !important; /* Google Sheets green */
+      color: #fff !important;
+    }
+    #lessonHistoryBtn:hover {
+      background-color: #0b8043 !important; /* Darker green on hover */
+    }
+    
+    /* Also style the buttons in the edit modal */
+    #noteLinkButton:not(.disabled) {
+      background-color: #4285f4 !important; /* Google Docs blue */
+      color: #fff !important;
+    }
+    #noteLinkButton:not(.disabled):hover {
+      background-color: #3367d6 !important;
+    }
+    
+    #historyLinkButton:not(.disabled) {
+      background-color: #0f9d58 !important; /* Google Sheets green */
+      color: #fff !important;
+    }
+    #historyLinkButton:not(.disabled):hover {
+      background-color: #0b8043 !important;
+    }
+    /* Style for select dropdown in evaluation modal */
+    #evaluationModal .modal-content select {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+      margin-top: 0.25rem;
+      margin-bottom: 1.25rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      background: #fff;
+    }
+    #evaluationModal .modal-content select:focus {
+      outline: none;
+      border-color: #219150;
+      box-shadow: 0 0 0 2px rgba(33, 145, 80, 0.2);
+    }
+    /* 1) Marker container stays absolute */
+    .marker-container {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      display: flex;
+      gap: 6px;           /* whatever spacing you like */
+      align-items: center;
+      z-index: 10;
+    }
+
+    /* 2) Child markers become static (in the flex flow) */
+    .marker-container .online-marker,
+    .marker-container .evaluation-btn {
+      position: static;   /* <-- remove absolute positioning */
+      top: auto;          /* <-- reset any old top/right */
+      right: auto;
+    }
+
+    /* 3) Tweak colours, padding, etc. as before */
+    .online-marker {
+      background: #2196f3;
+      color: #fff;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+    }
+
+    .evaluation-btn {
+      background: #ff6b35;
+      color: #fff;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+    }
+
+  </style>
+</head>
+<body>
+  <div id="loading"><span></span></div>
+  <h3 id="dashboardTitle"></h3>
+  <div class="calendar-container">
+    <div id="timeColumn" class="time-column"></div>
+    <div id="eventsColumn" class="events-column"></div>
+  </div>
+
+  <!-- UPLOAD MODAL -->
+  <div id="uploadModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeUploadModal()">&times;</span>
+      <h3>Upload Student Notes</h3>
+
+      <label for="studentSearch">Search Student Folder</label>
+      <input type="text" id="studentSearch" />
+
+      <input type="hidden" id="hiddenFolderName" />
+
+      <label for="date">Date</label>
+      <input type="date" id="date" />
+
+      <button onclick="uploadPDF()">Upload PDF</button>
+      <button id="lessonNotesBtn" class="secondary" onclick="openLessonNotes()">Lesson Notes</button>
+      <button id="lessonHistoryBtn" class="secondary" onclick="openLessonHistory()">Lesson History</button>
+    </div>
+  </div>
+
+  <!-- SUCCESS MODAL -->
+  <div id="successModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeUploadModal()">&times;</span>
+      <h3 id="successMessage">PDF Uploaded!</h3>
+      <div id="successButtons">
+        <button onclick="goToLessonHistoryForm()">Add Lesson History</button>
+        <button class="secondary" onclick="returnToUploadForm()">Back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LESSON HISTORY MODAL -->
+  <div id="historyModal" class="modal">
+    <div id="historyModalContent" class="modal-content">
+      <span class="close" onclick="closeHistoryModal()">&times;</span>
+      <h3>Add Lesson History</h3>
+
+      <label for="teacher">Teacher</label>
+      <select id="teacher"></select>
+      <div class="flexBox">
+        <div class="innerBox" id="leftBox">
+          <label for="warmUpTopic">Warm-Up Topic</label>
+          <textarea id="warmUpTopic"></textarea>
+
+          <label for="unitPages">Unit/Pages</label>
+          <textarea id="unitPages"></textarea>
+
+          <label for="homework">Homework</label>
+          <textarea id="homework"></textarea>
+        </div>
+        <div class="innerBox" id="rightBox">
+          <label for="comments">Comments</label>
+          <textarea id="comments"></textarea>
+
+          <label for="studentRequests">Student Requests</label>
+          <textarea id="studentRequests"></textarea>
+
+          <label for="advice">Advice</label>
+          <textarea id="advice"></textarea>
+        </div>
+      </div>
+      <button id="historySubmitBtn" onclick="submitLessonHistory()">Submit Lesson History</button>
+    </div>
+  </div>
+
+  <!-- Create Folder Modal -->
+  <div id="createFolderModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeCreateFolderModal()">&times;</span>
+      <h3>Create Folder for Demo Lesson</h3>
+      <p id="createFolderStudentName"></p>
+      <button id="createFolderBtn">Create Folder ==WIP== </button>
+    </div>
+  </div>
+
+  <!-- Edit Lesson Modal -->
+  <div id="editLessonModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal('editLessonModal')">&times;</span>
+      <h3 id="editLessonModalTitle">Lesson Details</h3>
+      <form id="editLessonForm" onsubmit="return false;">
+        <input type="hidden" id="eventID">
+        <label for="studentName">Student(s)</label>
+        <input type="text" id="studentName" readonly>
+        
+        <label for="folderName">Folder Name</label>
+        <input type="text" id="folderName" readonly>
+        
+        <div class="modal-buttons">
+            <button id="uploadPDFButton" type="button" class="secondary" onclick="uploadPDF()">Upload PDF</button>
+            <a id="noteLinkButton" href="#" target="_blank" class="a-as-button secondary disabled">Open Note</a>
+            <a id="historyLinkButton" href="#" target="_blank" class="a-as-button secondary disabled">Open History</a>
+        </div>
+
+        <button type="button" class="secondary" onclick="closeModal('editLessonModal')">Close</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Evaluation Modal -->
+  <div id="evaluationModal" class="modal">
+    <div class="modal-content" style="max-width: 1000px;">
+      <span class="close" onclick="closeModal('evaluationModal')">&times;</span>
+      <h3>Student Evaluation</h3>
+      
+      <label for="evalStudentName">Student Name</label>
+      <input id="evalStudentName" type="text" readonly style="display:none;">
+      <select id="evalStudentDropdown" style="display:none;" onchange="onStudentDropdownChange()"></select>
+      
+      <div class="grid">
+        <div>
+          <label for="evalLevel">Level</label>
+          <input id="evalLevel" type="text">
+        </div>
+        <div>
+          <label for="evalTextbook">Textbook</label>
+          <input id="evalTextbook" type="text">
+        </div>
+      </div>
+
+      <h3>Scores</h3>
+      <table id="evalsTable" style="margin-bottom:16px;">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Grammar</th>
+            <th>Vocab</th>
+            <th>Speaking</th>
+            <th>Listening</th>
+            <th>Reading</th>
+            <th>Writing</th>
+            <th>Fluency</th>
+            <th>Self-study</th>
+          </tr>
+        </thead>
+        <tbody id="evalsBody">
+          <!-- Input row will be inserted here by JS -->
+        </tbody>
+      </table>
+
+      <button type="button" onclick="generateEvaluationPDF()">Generate PDF</button>
+    </div>
+  </div>
+
+  <script>
+    // Calendar configuration
+    const CAL_START_HOUR = 10,
+          CAL_END_HOUR   = 20,
+          SLOT_HEIGHT    = 60,
+          CARD_HEIGHT    = 50;
+  
+    // On load: fetch event data, render once, then start polling statuses
+    document.addEventListener('DOMContentLoaded', () => {
+      // set the dashboard heading to today's date in DD/MM/YYYY
+      const titleEl = document.getElementById('dashboardTitle');
+      const today = new Date();
+      titleEl.textContent = String(today.getDate());
+
+      showLoading();
+      google.script.run
+        .withSuccessHandler(json => {
+          hideLoading();
+          let events;
+          try {
+            events = JSON.parse(json);
+          } catch {
+            document.getElementById('eventsColumn').innerHTML =
+              '<p style="color:red">Error parsing data.</p>';
+            return;
+          }
+          pollLessonStatuses();
+          renderCalendarView(events);
+          renderCurrentTimeLine();
+          // then every minute, refresh both statuses AND the clock line:
+          setInterval(() => {
+            pollLessonStatuses();
+            renderCurrentTimeLine();
+          }, 60_000);
+        })
+        .withFailureHandler(err => {
+          hideLoading();
+          document.getElementById('eventsColumn').innerHTML =
+            `<p style="color:red">Error: ${err.message}</p>`;
+        })
+        .getEventsJson();
+    });
+  
+    function showLoading() {
+      document.getElementById('loading').classList.add('visible');
+    }
+    function hideLoading() {
+      document.getElementById('loading').classList.remove('visible');
+    }
+  
+    // Draw left‐hand hour labels
+    function renderTimeColumn() {
+      const col = document.getElementById('timeColumn');
+      col.innerHTML = '';
+      for (let h = CAL_START_HOUR; h <= CAL_END_HOUR; h++) {
+        const slot = document.createElement('div');
+        slot.className = 'time-slot';
+        slot.style.height = SLOT_HEIGHT + 'px';
+        slot.textContent = (h < 10 ? '0' : '') + h + ':00';
+        col.appendChild(slot);
+      }
+    }
+  
+    // Draw background grid lines
+    function renderGridLines() {
+      const ec = document.getElementById('eventsColumn');
+      ec.querySelectorAll('.grid-line').forEach(el => el.remove());
+      for (let i = 0; i <= CAL_END_HOUR - CAL_START_HOUR; i++) {
+        const line = document.createElement('div');
+        line.className = 'grid-line';
+        Object.assign(line.style, {
+          position:       'absolute',
+          top:            (i * SLOT_HEIGHT) + 'px',
+          left:           '0',
+          right:          '0',
+          height:         '1px',
+          backgroundColor:'#eee',
+          pointerEvents:  'none',
+          zIndex:         '1'
+        });
+        ec.appendChild(line);
+      }
+    }
+  
+    // Convert "HH:mm" to minutes since midnight
+    function parseTimeToMinutes(t) {
+      const m = t.match(/(\d{1,2}):(\d{2})/);
+      return m
+        ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10)
+        : null;
+    }
+  
+    // Build the calendar cards
+    function renderCalendarView(events) {
+      renderTimeColumn();
+      renderGridLines();
+  
+      const ec = document.getElementById('eventsColumn');
+      ec.innerHTML = '';
+      ec.style.height = ((CAL_END_HOUR - CAL_START_HOUR + 1) * SLOT_HEIGHT) + 'px';
+  
+      if (!Array.isArray(events) || !events.length) {
+        ec.innerHTML = '<p style="color:red; margin:32px;">No students found for today.</p>';
+        return;
+      }
+  
+      // Compute startMin/endMin for each event
+      const evs = events.map(e => {
+        const sm = parseTimeToMinutes(e.Start);
+        return sm != null
+          ? { ...e, startMin: sm, endMin: sm + CARD_HEIGHT }
+          : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.startMin - b.startMin);
+  
+      // Assign columns to avoid overlap
+      const placed = [];
+      evs.forEach(e => {
+        let col = 0;
+        while (placed.some(o =>
+          o.col === col &&
+          !(e.endMin <= o.startMin || e.startMin >= o.endMin)
+        )) {
+          col++;
+        }
+        e.col = col;
+        placed.push(e);
+      });
+  
+      const maxCols = Math.max(1, ...placed.map((e,i) =>
+        placed.filter((o,j) =>
+          i !== j &&
+          !(e.endMin <= o.startMin || e.startMin >= o.endMin)
+        ).length + 1
+      ));
+  
+      // Create each card, stamping endMin and blank flags
+      placed.forEach(e => {
+        // Debug: Log event object and isOnline property
+        console.log('Event:', e.eventName, 'isOnline:', e.isOnline, e);
+        const card = document.createElement('div');
+        card.className = 'event-block';
+        card.id = e.eventID;
+
+        // Position & size
+        const topPx   = ((e.startMin - CAL_START_HOUR * 60) / 60) * SLOT_HEIGHT;
+        const widthPx = Math.max(120, (ec.offsetWidth - 10) / maxCols - 8);
+        Object.assign(card.style, {
+          top:    topPx + 'px',
+          left:   (e.col * (widthPx + 8)) + 'px',
+          width:  widthPx + 'px',
+          height: CARD_HEIGHT + 'px',
+          zIndex: '2'
+        });
+
+        // Stamp metadata for later polling
+        card.dataset.endMin         = e.endMin;
+        card.dataset.pdfUpload      = 'false';
+        card.dataset.lessonHistory  = 'false';
+
+        // Initial styling (will update once flags arrive)
+        updateSingleCardStatus(card);
+
+        // Card content
+        card.innerHTML = `
+          <div class="lesson-folder">${e.folderName}</div>
+          <div class="lesson-date">${e.Start} – ${e.End}</div>
+        `;
+
+        // Add marker container for online and evaluation markers
+        const markerContainer = document.createElement('div');
+        markerContainer.className = 'marker-container';
+
+        // Add online marker if event is online
+        if (e.isOnline) {
+          const onlineDiv = document.createElement('div');
+          onlineDiv.className = 'online-marker';
+          onlineDiv.textContent = 'Online';
+          markerContainer.appendChild(onlineDiv);
+        }
+
+        // Add evaluation button if event has evaluationDue tag
+        if (e.evaluationDue) {
+          const evalBtn = document.createElement('button');
+          evalBtn.className = 'evaluation-btn';
+          evalBtn.textContent = 'Evaluation Due';
+          evalBtn.onclick = (event) => {
+            event.stopPropagation();
+            openEvaluationModal(e);
+          };
+          markerContainer.appendChild(evalBtn);
+        }
+
+        // Only append the container if it has children
+        if (markerContainer.children.length > 0) {
+          card.appendChild(markerContainer);
+        }
+        
+        // Add evaluation ready indicator if event has evaluationReady tag
+        if (e.evaluationReady) {
+          const evalReady = document.createElement('div');
+          evalReady.className = 'evaluation-ready';
+          evalReady.textContent = 'Evaluation Ready';
+          card.appendChild(evalReady);
+        }
+
+        // New: On click, open the correct modal
+        card.onclick = () => {
+          if (e.folderName && e.folderName.endsWith('DEMO')) {
+            openCreateFolderModal(e);
+          } else {
+            openUploadModal(e.eventID, e.folderName);
+          }
+        };
+
+        ec.appendChild(card);
+      });
+  
+      // Draw the "now" line
+      renderCurrentTimeLine();
+    }
+  
+    // Apply the correct CSS class based on current time & flags
+    function updateSingleCardStatus(card) {
+      const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+      const endMin = parseInt(card.dataset.endMin, 10);
+      const pdf    = (card.dataset.pdfUpload   || '').toLowerCase() === 'true';
+      const hist   = (card.dataset.lessonHistory || '').toLowerCase() === 'true';
+  
+      card.classList.remove('uploaded','history','complete');
+      if (nowMin > endMin && !pdf)      card.classList.add('uploaded');
+      else if (pdf && !hist)            card.classList.add('history');
+      else if (pdf && hist)             card.classList.add('complete');
+    }
+  
+    // Fetch the latest pdfUpload & lessonHistory flags every minute
+    function pollLessonStatuses() {
+      google.script.run
+        .withSuccessHandler(statuses => {
+          statuses.forEach(s => {
+            const card = document.getElementById(s.eventID);
+            if (!card) return;
+            card.dataset.pdfUpload     = String(s.pdfUpload).toLowerCase();
+            card.dataset.lessonHistory = String(s.lessonHistory).toLowerCase();
+            updateSingleCardStatus(card);
+          });
+        })
+        .withFailureHandler(err => console.error(err))
+        .getLessonsTodayStatuses();
+    }
+  
+    // Draw the red "now" line
+    function renderCurrentTimeLine() {
+      document.querySelector('.current-time-line')?.remove();
+      const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+      const startMin = CAL_START_HOUR * 60,
+            endMin   = CAL_END_HOUR   * 60;
+      if (nowMin < startMin || nowMin > endMin) return;
+      const offsetPx = ((nowMin - startMin) / 60) * SLOT_HEIGHT;
+      const line = document.createElement('div');
+      line.className = 'current-time-line';
+      line.style.top = offsetPx + 'px';
+      document.getElementById('eventsColumn').appendChild(line);
+    }
+  
+    // === PDF‐upload / Modal logic ===
+    let selectedEventID = null;
+  
+    function openUploadModal(eventID, folderName) {
+      selectedEventID = eventID;
+      document.getElementById('studentSearch').value    = folderName;
+      document.getElementById('hiddenFolderName').value = folderName;
+
+      // Set today's date in the user's local timezone:
+      const dateInput = document.getElementById('date');
+      dateInput.valueAsDate = new Date();
+
+      // show the upload modal, hide any others
+      document.getElementById('uploadModal').classList.add('show');
+      document.getElementById('successModal').classList.remove('show');
+    }
+
+    function closeUploadModal() {
+      // hide all modals
+      document.getElementById('uploadModal').classList.remove('show');
+      document.getElementById('successModal').classList.remove('show');
+    }
+
+    // when upload succeeds:
+    function showSuccessPage(message, hideButtons = false) {
+      closeUploadModal();
+      document.getElementById('successMessage').textContent = message;
+      const btns = document.getElementById('successButtons');
+      if (btns) btns.style.display = hideButtons ? 'none' : '';
+      document.getElementById('successModal').classList.add('show');
+    }
+
+    function closeHistoryModal() {
+      document.getElementById('historyModal').classList.remove('show');
+    }
+
+    /**
+    * Triggered when the user clicks "Upload PDF" in the modal.
+    * Disables the button, shows spinner, calls server, then re-enables.
+    */
+    function uploadPDF() {
+      const folderName = document.getElementById('studentSearch').value;
+      const date       = document.getElementById('date').value;
+
+      if (!folderName || !date) {
+        return alert("Please select a folder & date.");
+      }
+
+      // 1) Lock the button so they can't click again:
+      const btn = document.querySelector('#uploadModal button');
+      btn.disabled = true;
+
+      // 2) Show the full-page spinner overlay:
+      showLoading();
+
+      // 3) Call server:
+      google.script.run
+        .withSuccessHandler(resp => {
+          // a) Re-enable + hide spinner
+          btn.disabled = false;
+          hideLoading();
+
+          // b) Update localStorage
+          const all = JSON.parse(localStorage.getItem('dashboardStatuses') || '{}');
+          all[selectedEventID] = all[selectedEventID] || {};
+          all[selectedEventID].pdf = true;
+          localStorage.setItem('dashboardStatuses', JSON.stringify(all));
+
+          // c) Recolor the card immediately
+          const card = document.getElementById(selectedEventID);
+          if (card) {
+            card.classList.add('uploaded');
+            card.classList.remove('history','complete');
+          }
+
+          // d) Show the "success" modal
+          showSuccessPage(resp.message);
+        })
+        .withFailureHandler(err => {
+          // a) Re-enable + hide spinner
+          btn.disabled = false;
+          hideLoading();
+          // b) Alert the error
+          alert("Upload failed: " + err.message);
+        })
+        .uploadStudentPDF({ folderName, date });
+    }
+
+    // Rename opener to goToHistoryModal
+    function goToLessonHistoryForm() {
+      const folderName = document.getElementById('hiddenFolderName').value;
+      const date       = document.getElementById('date').value;
+      if (!folderName) {
+        return alert('No folder selected!');
+      } 
+      // populate teacher dropdown on first open
+      const sel = document.getElementById('teacher');
+      if (!sel.children.length) {
+        google.script.run
+          .withSuccessHandler(teachers=>{
+            teachers.forEach(t=>{
+              const o = document.createElement('option');
+              o.value = o.text = t;
+              sel.append(o);
+            });
+          })
+          .withFailureHandler(e=>alert("Could not load teachers: "+e.message))
+          .getTeacherList();
+      }
+
+      document.getElementById('historyModal').classList.add('show');
+    }
+
+    function submitLessonHistory(){
+      const btn = document.getElementById('historySubmitBtn');
+      btn.disabled = true;
+      showLoading();
+
+      // Grab ISO date ("YYYY-MM-DD")
+      const iso = document.getElementById('date').value;
+      // Convert to DD/MM/YYYY
+      const [yyyy, mm, dd] = iso.split('-');
+      const ddmmyyyy = `${dd}/${mm}/${yyyy}`;
+
+      const data = {
+        folderName:      document.getElementById('hiddenFolderName').value,
+        date:            ddmmyyyy,
+        teacher:         document.getElementById('teacher').value,
+        warmUpTopic:     document.getElementById('warmUpTopic').value,
+        unitPages:       document.getElementById('unitPages').value,
+        homework:        document.getElementById('homework').value,
+        comments:        document.getElementById('comments').value,
+        studentRequests: document.getElementById('studentRequests').value,
+        advice:          document.getElementById('advice').value
+      };
+
+      google.script.run
+        .withSuccessHandler(resp=>{
+          btn.disabled = false;
+          hideLoading();
+          if (resp.success) {
+            closeHistoryModal();
+            showSuccessPage(resp.message, true);
+
+            // 2) Update localStorage
+            const statuses = JSON.parse(localStorage.getItem('dashboardStatuses') || '{}');
+            statuses[selectedEventID] = statuses[selectedEventID] || {};
+            statuses[selectedEventID].lessonHistory = true;
+            localStorage.setItem('dashboardStatuses', JSON.stringify(statuses));
+
+            // 3) Update the card's data-attributes and CSS
+            const card = document.getElementById(selectedEventID);
+            if (card) {
+              card.dataset.lessonHistory = 'true';
+              updateSingleCardStatus(card);
+              card.classList.remove('uploaded', 'history');
+              card.classList.add('complete');
+            }
+          } else {
+            alert("Error: " + resp.message);
+          }
+        })
+        .withFailureHandler(err=>{
+          btn.disabled = false;
+          hideLoading();
+          alert("Error: "+err.message);
+        })
+        .addLessonHistoryEntry(data);
+    }
+
+    function returnToUploadForm() {
+      document.getElementById('successModal').classList.remove('show');
+      document.getElementById('uploadModal').classList.add('show');
+    }
+
+    function openLessonNotes() {
+      const folderName = document.getElementById('hiddenFolderName').value;
+      if (!folderName) {
+        return alert('Please select a student folder first.');
+      }
+      
+      // Extract student name from folder name (remove prefix/ID)
+      const studentName = folderName.split(' ').slice(1).join(' '); // Skip only the ID
+      console.log('[LessonNotes] Extracted studentName:', studentName);
+      if (!studentName) {
+        return alert('Could not determine student name from folder.');
+      }
+      
+      // Get the lesson notes URL for this student
+      google.script.run
+        .withSuccessHandler(links => {
+          console.log('[LessonNotes] getStudentLinks result:', links);
+          if (links && links.noteUrl) {
+            // Open the lesson notes URL in a new tab
+            window.open(links.noteUrl, '_blank');
+          } else {
+            alert('Lesson notes URL not found for this student.');
+          }
+        })
+        .withFailureHandler(err => {
+          console.error('[LessonNotes] Error fetching lesson notes URL:', err);
+          alert('Error opening lesson notes: ' + err.message);
+        })
+        .getStudentLinks(studentName);
+    }
+
+    function openLessonHistory() {
+      const folderName = document.getElementById('hiddenFolderName').value;
+      if (!folderName) {
+        return alert('Please select a student folder first.');
+      }
+      
+      // Extract student name from folder name (remove prefix/ID)
+      const studentName = folderName.split(' ').slice(1).join(' '); // Skip only the ID
+      console.log('[LessonHistory] Extracted studentName:', studentName);
+      if (!studentName) {
+        return alert('Could not determine student name from folder.');
+      }
+      
+      // Get the lesson history URL for this student
+      google.script.run
+        .withSuccessHandler(links => {
+          console.log('[LessonHistory] getStudentLinks result:', links);
+          if (links && links.historyUrl) {
+            // Open the lesson history URL in a new tab
+            window.open(links.historyUrl, '_blank');
+          } else {
+            alert('Lesson history URL not found for this student.');
+          }
+        })
+        .withFailureHandler(err => {
+          console.error('[LessonHistory] Error fetching lesson history URL:', err);
+          alert('Error opening lesson history: ' + err.message);
+        })
+        .getStudentLinks(studentName);
+    }
+
+    function createEventBlock(event) {
+      const card = document.createElement('div');
+      card.className = 'event-block';
+      if (event.pdfUpload) card.classList.add('uploaded');
+      if (event.lessonHistory) card.classList.add('history');
+      if (event.pdfUpload && event.lessonHistory) card.classList.add('complete');
+
+      // Add event name
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'lesson-names';
+      nameDiv.textContent = event.eventName;
+      card.appendChild(nameDiv);
+
+      // Add student names
+      const studentsDiv = document.createElement('div');
+      studentsDiv.className = 'lesson-folder';
+      studentsDiv.textContent = event.studentNames;
+      card.appendChild(studentsDiv);
+
+      // Add time
+      const timeDiv = document.createElement('div');
+      timeDiv.className = 'lesson-date';
+      timeDiv.textContent = `${event.Start} - ${event.End}`;
+      card.appendChild(timeDiv);
+
+      // Add create folder button for demo lessons
+      if (event.eventName.toLowerCase().includes('d/l')) {
+        const createFolderBtn = document.createElement('button');
+        createFolderBtn.className = 'create-folder-btn';
+        createFolderBtn.textContent = 'Create Folder';
+        createFolderBtn.onclick = async (e) => {
+          e.stopPropagation();
+          createFolderBtn.disabled = true;
+          createFolderBtn.textContent = 'Creating...';
+          try {
+            const studentName = await google.script.run
+              .withSuccessHandler((name) => {
+                return google.script.run
+                  .withSuccessHandler((folderName) => {
+                    createFolderBtn.textContent = 'Folder Created';
+                    createFolderBtn.style.background = '#4CAF50';
+                  })
+                  .withFailureHandler((error) => {
+                    createFolderBtn.textContent = 'Error';
+                    createFolderBtn.style.background = '#F44336';
+                    console.error('Error creating folder:', error);
+                  })
+                  .createFoldersForStudents(studentName, [studentName]);
+              })
+              .withFailureHandler((error) => {
+                createFolderBtn.textContent = 'Error';
+                createFolderBtn.style.background = '#F44336';
+                console.error('Error extracting student name:', error);
+              })
+              .extractStudentNameFromDemo(event.eventName);
+          } catch (error) {
+            console.error('Error:', error);
+            createFolderBtn.textContent = 'Error';
+            createFolderBtn.style.background = '#F44336';
+          }
+        };
+        card.appendChild(createFolderBtn);
+      }
+
+      return card;
+    }
+
+    // Add JS for create folder modal
+    function openCreateFolderModal(event) {
+      document.getElementById('createFolderStudentName').textContent = event.folderName.replace(' DEMO', '');
+      document.getElementById('createFolderModal').classList.add('show');
+      document.getElementById('createFolderBtn').onclick = async () => {
+        const studentName = event.folderName.replace(' DEMO', '');
+        document.getElementById('createFolderBtn').disabled = true;
+        document.getElementById('createFolderBtn').textContent = 'Creating...';
+        try {
+          await google.script.run
+            .withSuccessHandler(() => {
+              document.getElementById('createFolderBtn').textContent = 'Folder Created';
+              document.getElementById('createFolderBtn').style.background = '#4CAF50';
+            })
+            .withFailureHandler((error) => {
+              document.getElementById('createFolderBtn').textContent = 'Error';
+              document.getElementById('createFolderBtn').style.background = '#F44336';
+              console.error('Error creating folder:', error);
+            })
+            .createFoldersForStudents(studentName, [studentName]);
+        } catch (error) {
+          console.error('Error:', error);
+          document.getElementById('createFolderBtn').textContent = 'Error';
+          document.getElementById('createFolderBtn').style.background = '#F44336';
+        }
+      };
+    }
+
+    function closeCreateFolderModal() {
+      document.getElementById('createFolderModal').classList.remove('show');
+      document.getElementById('createFolderBtn').disabled = false;
+      document.getElementById('createFolderBtn').textContent = 'Create Folder';
+      document.getElementById('createFolderBtn').style.background = '';
+    }
+
+    // --- APP ---
+
+    function showEditModal(eventData) {
+      document.getElementById('eventID').value = eventData.eventID;
+      document.getElementById('editLessonModalTitle').textContent = eventData.eventName;
+      document.getElementById('studentName').value = eventData.studentName;
+      document.getElementById('folderName').value = eventData.folderName;
+
+      // Reset and disable link buttons initially
+      const noteBtn = document.getElementById('noteLinkButton');
+      const historyBtn = document.getElementById('historyLinkButton');
+      noteBtn.href = '#';
+      historyBtn.href = '#';
+      noteBtn.classList.add('disabled');
+      historyBtn.classList.add('disabled');
+      
+      // Fetch links for the student
+      const studentName = eventData.studentName.split(',')[0].trim(); // Use first student for links
+      if (studentName) {
+        google.script.run
+          .withSuccessHandler(updateLinkButtons)
+          .withFailureHandler(onLinkFetchError)
+          .getStudentLinks(studentName);
+      }
+
+      openModal('editLessonModal');
+    }
+
+    function updateLinkButtons(links) {
+        const noteBtn = document.getElementById('noteLinkButton');
+        const historyBtn = document.getElementById('historyLinkButton');
+
+        if (links && !links.error) {
+            if (links.noteUrl) {
+                noteBtn.href = links.noteUrl;
+                noteBtn.classList.remove('disabled');
+            }
+            if (links.historyUrl) {
+                historyBtn.href = links.historyUrl;
+                historyBtn.classList.remove('disabled');
+            }
+        } else if (links && links.error) {
+            console.error("Error fetching links:", links.error);
+        } else {
+             console.log("No links returned for student.");
+        }
+    }
+
+    function onLinkFetchError(err) {
+        console.error("Failed to call getStudentLinks:", err.message);
+        // Keep buttons disabled
+    }
+
+    function closeModal(modalId) {
+      document.getElementById(modalId).classList.remove('show');
+    }
+
+    // Evaluation Functions
+    function openEvaluationModal(eventData) {
+      const folderName = eventData.folderName || '';
+      const evalInput = document.getElementById('evalStudentName');
+      const evalDropdown = document.getElementById('evalStudentDropdown');
+      // Fetch student names from server by folderName
+      google.script.run
+        .withSuccessHandler(function(names) {
+          if (Array.isArray(names) && names.length > 1) {
+            evalInput.style.display = 'none';
+            evalDropdown.style.display = '';
+            evalDropdown.innerHTML = '';
+            names.forEach(name => {
+              const opt = document.createElement('option');
+              opt.value = name;
+              opt.textContent = name;
+              evalDropdown.appendChild(opt);
+            });
+            // Load evaluations for the first student in dropdown
+            if (names.length > 0) {
+              loadStudentEvaluations(names[0]);
+            }
+          } else {
+            evalDropdown.style.display = 'none';
+            evalInput.style.display = '';
+            evalInput.value = names && names.length === 1 ? names[0] : '';
+            // Load previous evaluations for the single student
+            const studentName = names && names.length === 1 ? names[0] : '';
+            if (studentName) {
+              loadStudentEvaluations(studentName);
+            }
+          }
+          document.getElementById('evaluationModal').classList.add('show');
+        })
+        .withFailureHandler(function(e) {
+          alert('Could not fetch student names: ' + e.message);
+        })
+        .getStudentNamesByFolder(folderName);
+    }
+
+    function loadStudentEvaluations(studentName) {
+      google.script.run
+        .withSuccessHandler(function(evaluations) {
+          renderEvaluationTable(evaluations);
+        })
+        .withFailureHandler(function(e) {
+          console.error('Could not fetch evaluations: ' + e.message);
+          renderEvaluationTable([]);
+        })
+        .getStudentEvaluations(studentName);
+    }
+
+    function renderEvaluationTable(evaluations) {
+      const tbody = document.getElementById('evalsBody');
+      tbody.innerHTML = '';
+      
+      // Add previous evaluation rows
+      evaluations.forEach(eval => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${eval.evaluationDate}</td>
+          <td>${eval.grammar}</td>
+          <td>${eval.vocabulary}</td>
+          <td>${eval.speaking}</td>
+          <td>${eval.listening}</td>
+          <td>${eval.reading}</td>
+          <td>${eval.writing}</td>
+          <td>${eval.fluency}</td>
+          <td>${eval.selfStudy}</td>
+        `;
+        tbody.appendChild(row);
+      });
+      
+      // Add input row at the bottom
+      renderEvalInputRow();
+    }
+
+    function renderEvalInputRow() {
+      const tbody = document.getElementById('evalsBody');
+      tbody.innerHTML = '';
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td><input type="date" id="evalDate"></td>
+        <td><input type="number" id="evalGrammar" step="0.5"></td>
+        <td><input type="number" id="evalVocab" step="0.5"></td>
+        <td><input type="number" id="evalSpeaking" step="0.5"></td>
+        <td><input type="number" id="evalListening" step="0.5"></td>
+        <td><input type="number" id="evalReading" step="0.5"></td>
+        <td><input type="number" id="evalWriting" step="0.5"></td>
+        <td><input type="number" id="evalFluency" step="0.5"></td>
+        <td><input type="number" id="evalSelf" step="0.5"></td>
+      `;
+      tbody.appendChild(row);
+    }
+
+    function generateEvaluationPDF() {
+      const data = {
+        studentName: document.getElementById('evalStudentName').value || document.getElementById('evalStudentDropdown').value,
+        level:       document.getElementById('evalLevel').value,
+        textbook:    document.getElementById('evalTextbook').value,
+        evals: []
+      };
+      // Only one row, so just read from the input fields
+      data.evals.push({
+        date:    document.getElementById('evalDate').value,
+        grammar: document.getElementById('evalGrammar').value,
+        vocab:   document.getElementById('evalVocab').value,
+        speak:   document.getElementById('evalSpeaking').value,
+        listen:  document.getElementById('evalListening').value,
+        read:    document.getElementById('evalReading').value,
+        write:   document.getElementById('evalWriting').value,
+        fluency: document.getElementById('evalFluency').value,
+        self:    document.getElementById('evalSelf').value
+      });
+      
+      google.script.run
+        .withSuccessHandler(url => {
+          if (url) {
+            window.open(url, '_blank');
+            closeModal('evaluationModal');
+          } else {
+            alert('Error generating PDF');
+          }
+        })
+        .withFailureHandler(err => {
+          alert('Error generating PDF: ' + err.message);
+        })
+        .generateEvaluationPDF(data);
+    }
+
+    // Handle student dropdown change
+    function onStudentDropdownChange() {
+      const dropdown = document.getElementById('evalStudentDropdown');
+      const selectedStudent = dropdown.value;
+      if (selectedStudent) {
+        loadStudentEvaluations(selectedStudent);
+      }
+    }
+  </script>
+</body>
+</html>
